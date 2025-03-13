@@ -6,19 +6,17 @@ from google.api_core.retry import Retry
 # For conversation memory
 from langchain.memory import ConversationBufferMemory
 
-# For identifying message roles
+# For identifying the message roles
 from langchain.schema import AIMessage, HumanMessage, SystemMessage
 
 # Set environment variable for DNS resolver
 os.environ["GRPC_DNS_RESOLVER"] = "native"
 
-# Initialize the Streamlit app
+# Initializing the Streamlit app
 st.set_page_config(page_title="AI Data Science Tutor", layout="wide")
 st.title("AI Data Science Tutor")
 
-# -----------------------
-# 1. Session State Setup
-# -----------------------
+# Setting up the Session State
 if "api_key" not in st.session_state:
     st.session_state.api_key = None
 if "llm" not in st.session_state:
@@ -31,9 +29,7 @@ if "memory" not in st.session_state:
 if "loading" not in st.session_state:
     st.session_state.loading = False
 
-# -----------------------
-# 2. Custom Retry Policy
-# -----------------------
+# Custom Retry Policy
 retry_policy = Retry(
     initial=1.0,
     maximum=60.0,
@@ -41,9 +37,7 @@ retry_policy = Retry(
     deadline=900.0
 )
 
-# -----------------------
-# 3. Sidebar: API Key + Controls
-# -----------------------
+# API Key and Controls in the Sidebar
 with st.sidebar:
     st.title("Configuration Settings")
     
@@ -61,7 +55,7 @@ with st.sidebar:
                 try:
                     st.session_state.llm = ChatGoogleGenerativeAI(
                         # Update the model name if needed
-                        model="gemini-2.0-flash",
+                        model="gemini-1.5-pro",
                         google_api_key=api_key,
                         temperature=0.7,
                         retry=retry_policy
@@ -78,17 +72,15 @@ with st.sidebar:
         st.markdown("<h3 style='margin-bottom: 10px;'>Conversation Controls</h3>", unsafe_allow_html=True)
         if st.button("Clear Conversation History"):
             st.session_state.memory.clear()
-            st.success("Conversation history cleared!")
+            st.success("Conversation history cleared successfully")
 
-# -----------------------
-# 4. Chat UI
-# -----------------------
+# Chat UI
 col1, col2 = st.columns([3, 1])
 
 with col1:
     st.markdown("<h3 style='margin-bottom: 20px;'>Conversation</h3>", unsafe_allow_html=True)
     
-    # Display chat history from memory
+    # Displaying the chat history from memory
     for msg in st.session_state.memory.chat_memory.messages:
         # Identify the role of each message (Human, AI, System)
         if isinstance(msg, HumanMessage):
@@ -101,15 +93,13 @@ with col1:
     # Chat input
     user_input = st.chat_input("Ask your data science question...")
 
-# -----------------------
-# 5. Handle Input & Response
-# -----------------------
+# Input & Response Handling
 if user_input and st.session_state.llm:
     with st.spinner("Thinking..."):
-        # 1) Add the user's message to memory as a HumanMessage
+        # Add the user's message to memory as a HumanMessage
         st.session_state.memory.chat_memory.add_user_message(user_input)
 
-        # 2) Build the final message list, starting with a system prompt
+        # Building the final message list, starting with a system prompt
         messages = [{"role": "system", "content": "You are a helpful AI Data Science Tutor. Keep responses technical and concise."}]
 
         # Convert each message in memory to the 'role' format that ChatGoogleGenerativeAI expects
@@ -125,15 +115,15 @@ if user_input and st.session_state.llm:
 
             messages.append({"role": role, "content": msg.content})
 
-        # 3) Invoke Gemini LLM
+        # Invoke Gemini
         try:
             response = st.session_state.llm.invoke(messages)
             ai_response = response.content
 
-            # 4) Add the AI's response back into the memory
+            # Adding the AI's response back into the memory
             st.session_state.memory.chat_memory.add_ai_message(ai_response)
 
-            # 5) Rerun to show the updated conversation
+            # Rerun to show the updated conversation
             st.rerun()
 
         except Exception as e:
