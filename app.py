@@ -91,7 +91,7 @@ with col1:
             st.markdown(f"_System_: {msg.content}")
 
     # Chat input
-    user_input = st.chat_input("Ask your data science question...")
+    user_input = st.chat_input("Ask your data science question..")
 
 # Input & Response Handling
 if user_input and st.session_state.llm:
