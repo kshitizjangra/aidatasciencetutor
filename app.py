@@ -3,12 +3,6 @@ import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI
 from google.api_core.retry import Retry
 
-# For conversation memory
-from langchain.memory import ConversationBufferMemory
-
-# For identifying the message roles
-from langchain.schema import AIMessage, HumanMessage, SystemMessage
-
 # Set environment variable for DNS resolver
 os.environ["GRPC_DNS_RESOLVER"] = "native"
 
@@ -21,10 +15,8 @@ if "api_key" not in st.session_state:
     st.session_state.api_key = None
 if "llm" not in st.session_state:
     st.session_state.llm = None
-
-# Use LangChain Memory
-if "memory" not in st.session_state:
-    st.session_state.memory = ConversationBufferMemory(return_messages=True)
+if "conversation_memory" not in st.session_state:
+    st.session_state.conversation_memory = []
 
 if "loading" not in st.session_state:
     st.session_state.loading = False
@@ -54,14 +46,13 @@ with st.sidebar:
             if api_key:
                 try:
                     st.session_state.llm = ChatGoogleGenerativeAI(
-                        # Update the model name if needed
                         model="gemini-1.5-pro",
                         google_api_key=api_key,
                         temperature=0.7,
                         retry=retry_policy
                     )
                     # Clear memory whenever a new API key is set
-                    st.session_state.memory.clear()
+                    st.session_state.conversation_memory.clear()
                     st.success("API Key configured successfully")
                 except Exception as e:
                     st.error(f"Invalid API Key or authentication error: {e}")
@@ -71,7 +62,7 @@ with st.sidebar:
     with st.container():
         st.markdown("<h3 style='margin-bottom: 10px;'>Conversation Controls</h3>", unsafe_allow_html=True)
         if st.button("Clear Conversation History"):
-            st.session_state.memory.clear()
+            st.session_state.conversation_memory.clear()
             st.success("Conversation history cleared successfully")
 
 # Chat UI
@@ -81,14 +72,14 @@ with col1:
     st.markdown("<h3 style='margin-bottom: 20px;'>Conversation</h3>", unsafe_allow_html=True)
     
     # Displaying the chat history from memory
-    for msg in st.session_state.memory.chat_memory.messages:
+    for msg in st.session_state.conversation_memory:
         # Identify the role of each message (Human, AI, System)
-        if isinstance(msg, HumanMessage):
-            st.markdown(f"**You:** {msg.content}")
-        elif isinstance(msg, AIMessage):
-            st.markdown(f"**Tutor:** {msg.content}")
-        elif isinstance(msg, SystemMessage):
-            st.markdown(f"_System_: {msg.content}")
+        if msg["role"] == "user":
+            st.markdown(f"**You:** {msg['content']}")
+        elif msg["role"] == "assistant":
+            st.markdown(f"**Tutor:** {msg['content']}")
+        elif msg["role"] == "system":
+            st.markdown(f"_System_: {msg['content']}")
 
     # Chat input
     user_input = st.chat_input("Ask your data science question..")
@@ -96,32 +87,36 @@ with col1:
 # Input & Response Handling
 if user_input and st.session_state.llm:
     with st.spinner("Thinking..."):
-        # Add the user's message to memory as a HumanMessage
-        st.session_state.memory.chat_memory.add_user_message(user_input)
+        # Add the user's message to memory
+        st.session_state.conversation_memory.append({"role": "user", "content": user_input})
 
         # Building the final message list, starting with a system prompt
-        messages = [{"role": "system", "content": "You are a helpful AI Data Science Tutor. Keep responses technical and concise."}]
-
-        # Convert each message in memory to the 'role' format that ChatGoogleGenerativeAI expects
-        for msg in st.session_state.memory.chat_memory.messages:
-            if isinstance(msg, HumanMessage):
-                role = "user"
-            elif isinstance(msg, AIMessage):
-                role = "assistant"
-            elif isinstance(msg, SystemMessage):
-                role = "system"
-            else:
-                role = "system"  # fallback
-
-            messages.append({"role": role, "content": msg.content})
+        system_prompt = {
+            "role": "system",
+            "content": "You are a helpful AI Data Science Tutor. Keep responses technical and concise. " \
+                       "Only answer questions related to data science, machine learning, statistics, " \
+                       "data analysis, and related technical topics. If asked about other topics, " \
+                       "politely inform the user that you specialize in data science and suggest " \
+                       "they ask about data-related topics."
+        }
+        
+        messages = [system_prompt]
+        messages.extend(st.session_state.conversation_memory)
 
         # Invoke Gemini
         try:
             response = st.session_state.llm.invoke(messages)
             ai_response = response.content
 
-            # Adding the AI's response back into the memory
-            st.session_state.memory.chat_memory.add_ai_message(ai_response)
+            # Check if response is about data science
+            if "data science" in ai_response.lower() or "machine learning" in ai_response.lower() or "statistics" in ai_response.lower():
+                # Adding the AI's response back into the memory
+                st.session_state.conversation_memory.append({"role": "assistant", "content": ai_response})
+            else:
+                # Create a polite response about being a data science tutor
+                polite_response = "I'm specialized in data science topics. Could you please ask a question related to data science, " \
+                                 "machine learning, statistics, or data analysis?"
+                st.session_state.conversation_memory.append({"role": "assistant", "content": polite_response})
 
             # Rerun to show the updated conversation
             st.rerun()
