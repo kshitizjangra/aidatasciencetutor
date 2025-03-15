@@ -38,7 +38,8 @@ with st.sidebar:
         api_key = st.text_input(
             "Enter your Google Gemini API Key",
             placeholder="Paste your API key here..",
-            key="api_key_input"
+            key="api_key_input",
+            type="password"  # This masks the API key input
         )
         
         if api_key != st.session_state.api_key:
