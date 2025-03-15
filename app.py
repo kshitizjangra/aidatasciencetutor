@@ -34,7 +34,7 @@ with st.sidebar:
     st.title("Configuration Settings")
     
     with st.container():
-        st.markdown("<h3 style='margin-bottom: 10px;'>Configure the API before using this tool.</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='margin-bottom: 10px;'>Configure the API before using this tool..</h3>", unsafe_allow_html=True)
         api_key = st.text_input(
             "Enter your Google Gemini API Key",
             placeholder="Paste your API key here..",
