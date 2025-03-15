@@ -52,7 +52,7 @@ with st.sidebar:
                         retry=retry_policy
                     )
                     # Clear memory whenever a new API key is set
-                    st.session_state.conversation_memory.clear()
+                    st.session_state.conversation_memory = []
                     st.success("API Key configured successfully")
                 except Exception as e:
                     st.error(f"Invalid API Key or authentication error: {e}")
@@ -62,7 +62,7 @@ with st.sidebar:
     with st.container():
         st.markdown("<h3 style='margin-bottom: 10px;'>Conversation Controls</h3>", unsafe_allow_html=True)
         if st.button("Clear Conversation History"):
-            st.session_state.conversation_memory.clear()
+            st.session_state.conversation_memory = []
             st.success("Conversation history cleared successfully")
 
 # Chat UI
@@ -108,15 +108,8 @@ if user_input and st.session_state.llm:
             response = st.session_state.llm.invoke(messages)
             ai_response = response.content
 
-            # Check if response is about data science
-            if "data science" in ai_response.lower() or "machine learning" in ai_response.lower() or "statistics" in ai_response.lower():
-                # Adding the AI's response back into the memory
-                st.session_state.conversation_memory.append({"role": "assistant", "content": ai_response})
-            else:
-                # Create a polite response about being a data science tutor
-                polite_response = "I'm specialized in data science topics. Could you please ask a question related to data science, " \
-                                 "machine learning, statistics, or data analysis?"
-                st.session_state.conversation_memory.append({"role": "assistant", "content": polite_response})
+            # Adding the AI's response back into the memory
+            st.session_state.conversation_memory.append({"role": "assistant", "content": ai_response})
 
             # Rerun to show the updated conversation
             st.rerun()
