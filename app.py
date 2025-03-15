@@ -17,9 +17,10 @@ if "llm" not in st.session_state:
     st.session_state.llm = None
 if "conversation_memory" not in st.session_state:
     st.session_state.conversation_memory = []
-
 if "loading" not in st.session_state:
     st.session_state.loading = False
+if "max_history" not in st.session_state:
+    st.session_state.max_history = 10  # Limit conversation history to 10 exchanges
 
 # Custom Retry Policy
 retry_policy = Retry(
@@ -74,13 +75,10 @@ with col1:
     
     # Displaying the chat history from memory
     for msg in st.session_state.conversation_memory:
-        # Identify the role of each message (Human, AI, System)
         if msg["role"] == "user":
             st.markdown(f"**You:** {msg['content']}")
         elif msg["role"] == "assistant":
             st.markdown(f"**Tutor:** {msg['content']}")
-        elif msg["role"] == "system":
-            st.markdown(f"_System_: {msg['content']}")
 
     # Chat input
     user_input = st.chat_input("Ask your data science question..")
@@ -91,7 +89,11 @@ if user_input and st.session_state.llm:
         # Add the user's message to memory
         st.session_state.conversation_memory.append({"role": "user", "content": user_input})
 
-        # Building the final message list, starting with a system prompt
+        # Limit conversation history length
+        if len(st.session_state.conversation_memory) > st.session_state.max_history * 2:
+            st.session_state.conversation_memory = st.session_state.conversation_memory[-st.session_state.max_history*2:]
+
+        # Building the final message list with system prompt
         system_prompt = {
             "role": "system",
             "content": "You are a helpful AI Data Science Tutor. Keep responses technical and concise. " \
